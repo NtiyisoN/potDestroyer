@@ -6,7 +6,7 @@
 
 // SETCURRENTDIR("Media") // go to media files
 
-TYPE foerderband_TYPE 
+TYPE foerderband_TYPE
 	id$
 ENDTYPE
 
@@ -22,17 +22,17 @@ ENDTYPE
 TYPE destroyer_TYPE
 	posX
 	posY
-	
+
 	vaseLevel
 	vaseLevelActive
 	vaseLife
 	vaseLifeMax
-	
+
 	hitterPosition
 	hitterTimeOld
 	hitterTimeOffset
 	hitterLevel
-	
+
 	crackStatus
 
 ENDTYPE
@@ -42,23 +42,26 @@ TYPE status_TYPE
 	foerderbandTimeOld
 	foerderbandTimeOffset
 	foerderbandSpeed
+	
+	money
+	
 ENDTYPE
 
 TYPE muenze_TYPE
 	posX
 	posY
-	
+
 	drawDirection
 	drawPosition
-	
+
 	phi
 	rotation
 
 	groundReached
-	
+
 	timerOld
 	timerOffset = 50
-	
+
 ENDTYPE
 
 GLOBAL sprite AS sprite_TYPE, status AS status_TYPE, destroyer[] AS destroyer_TYPE, muenze[] AS muenze_TYPE
@@ -78,11 +81,11 @@ FUNCTION main:
 		drawMenu()
 		drawDestroyer()
 		drawMuenze()
-		
+
 		update()
-		
+
 		PRINT LEN(muenze[]), 0, 0
-	
+
 		SHOWSCREEN
 	WEND
 
@@ -93,10 +96,10 @@ FUNCTION init:
 
 	AUTOPAUSE FALSE
 	SYSTEMPOINTER TRUE
-	
+
 	status.foerderbandTimeOffset = 1000
-	status.foerderbandSpeed = 1
-	
+	status.foerderbandSpeed = 0.1
+
 
 ENDFUNCTION
 
@@ -108,7 +111,7 @@ LOCAL f AS foerderband_TYPE, tmp, feld$[], vase$[], crack$[], hitter$[], muenze$
 	DIMDATA crack$[], "media/gfx/crack_0.png", "media/gfx/crack_1.png", "media/gfx/crack_2.png", "media/gfx/crack_3.png"
 	DIMDATA hitter$[], "media/gfx/hitter_0.png", "media/gfx/hitter_1.png", "media/gfx/hitter_2.png", "media/gfx/hitter_3.png", "media/gfx/hitter_4.png"
 	DIMDATA muenze$[], "media/gfx/muenze_0.png", "media/gfx/muenze_1.png", "media/gfx/muenze_2.png", "media/gfx/muenze_3.png", "media/gfx/muenze_4.png"
-	
+
 	// Halterung
 		sprite.holder.id$ = spriteLoader("media/gfx/holder.png")
 
@@ -120,12 +123,12 @@ LOCAL f AS foerderband_TYPE, tmp, feld$[], vase$[], crack$[], hitter$[], muenze$
 	// Vase
 	FOR tmp = 0 TO LEN(vase$[]) - 1
 		f.id$ = spriteLoader(vase$[tmp])
-		DIMPUSH sprite.vase[], f	
+		DIMPUSH sprite.vase[], f
 	NEXT
 	// Crack
 	FOR tmp = 0 TO LEN(crack$[]) - 1
 		f.id$ = spriteLoader(crack$[tmp])
-		DIMPUSH sprite.crack[], f	
+		DIMPUSH sprite.crack[], f
 	NEXT
 	// Hitter
 	FOR tmp = 0 TO LEN(hitter$[]) - 1
@@ -138,35 +141,35 @@ LOCAL f AS foerderband_TYPE, tmp, feld$[], vase$[], crack$[], hitter$[], muenze$
 		DIMPUSH sprite.muenze[], f
 	NEXT
 	// Destroyer
-	
-	
+
+
 ENDFUNCTION
 
 FUNCTION update:
 LOCAL vase, tmp, setter, foerderbandMovement, prozent
-	
+
 	IF GETTIMERALL() >= status.foerderbandTimeOld
-	
+
 		INC status.foerderbandPosition, 1
 		IF status.foerderbandPosition > 2 THEN status.foerderbandPosition = 0
-		
-		
+
+
 		foerderbandMovement = TRUE
-		
-		status.foerderbandTimeOld = GETTIMERALL() + status.foerderbandTimeOffset	
-		
+
+		status.foerderbandTimeOld = GETTIMERALL() + status.foerderbandTimeOffset
+
 	ENDIF
 
 	FOREACH d IN destroyer[]
 		IF GETTIMERALL() >= d.hitterTimeOld
 			INC d.hitterPosition, 1
 			IF d.hitterPosition > 4 THEN d.hitterPosition = 0
-			
+
 			IF d.hitterPosition = 0
 				DEC d.vaseLife, 1
-				
+
 				prozent = d.vaseLife / d.vaseLifeMax
-				
+
 				IF prozent >= 0.8
 					d.crackStatus = 0
 				ELSEIF prozent < 0.8 AND prozent >= 0.6
@@ -178,8 +181,8 @@ LOCAL vase, tmp, setter, foerderbandMovement, prozent
 				ELSE
 					d.crackStatus = 4
 				ENDIF
-				
-				
+
+
 				IF d.vaseLife = 0
 					vase = RND(d.vaseLevel)
 					d.crackStatus = 0
@@ -187,27 +190,27 @@ LOCAL vase, tmp, setter, foerderbandMovement, prozent
 					FOR tmp = 0 TO 2 + RND(2)
 						addMuenze(0)
 					NEXT
-					
+
 					SELECT vase
 					CASE 0
-												
+
 						d.vaseLife = 10
 						d.vaseLifeMax = d.vaseLife
-					
+
 					ENDSELECT
-					
+
 				ENDIF
-				
+
 			ENDIF
-			
+
 			d.hitterTimeOld = GETTIMERALL() + d.hitterTimeOffset
 		ENDIF
 	NEXT
-	
+
 	FOREACH m IN muenze[]
 		setter = 0
 		IF GETTIMERALL() >= m.timerOld
-		
+
 			IF m.drawDirection = 0
 				INC m.drawPosition, 1
 				IF m.drawPosition > 4
@@ -221,11 +224,11 @@ LOCAL vase, tmp, setter, foerderbandMovement, prozent
 					m.drawPosition = 0
 					m.drawDirection = 0
 				ENDIF
-			ENDIF		
+			ENDIF
 			m.timerOld = GETTIMERALL() + m.timerOffset
 
 			IF m.groundReached = FALSE
-				
+
 				IF m.rotation = 0
 					INC m.phi, 5
 					IF m.phi > 450 THEN m.phi = 450
@@ -234,26 +237,27 @@ LOCAL vase, tmp, setter, foerderbandMovement, prozent
 					DEC m.phi, 5
 					IF m.phi < 90 THEN m.phi = 90
 				ENDIF
-				
+
 				m.posX = m.posX + COS(m.phi) * 5
 				m.posY = m.posY + SIN(m.phi) * 5
-			
+
 				IF m.posY >= 504 - 13 - 8
 					m.posY = 504 - 13 - 8
 					m.groundReached = TRUE
 				ENDIF
-			
+
 			ENDIF
-			
+
 			IF m.groundReached = TRUE
 				//IF foerderbandMovement = TRUE
-					INC m.posX, status.foerderbandSpeed
+					INC m.posX, status.foerderbandSpeed * GETTIMER()
 					IF m.posX >= 1023 + 16
+						INC status.money, 1
 						DELETE m
 					ENDIF
 				//ENDIF
-			ENDIF			
-			
+			ENDIF
+
 		ENDIF
 	NEXT
 
@@ -263,11 +267,11 @@ FUNCTION spriteLoader: file$
 LOCAL genID
 
 	genID = GENSPRITE()
-	
+
 	LOADSPRITE file$, genID
-	
+
 	RETURN genID
-	
+
 
 ENDFUNCTION
 
@@ -276,16 +280,16 @@ LOCAL d AS destroyer_TYPE, defaultX = 496, defaultY = 368
 
 	//496
 	//368
-	
+
 	SELECT position
 	CASE 0
 		d.posX = 496
 		d.posY = 368
-		d.hitterTimeOffset = 50
+		d.hitterTimeOffset = 150
 	ENDSELECT
-	
+
 		d.vaseLife = 10
-	
+
 	DIMPUSH destroyer[], d
 
 ENDFUNCTION
@@ -298,11 +302,11 @@ LOCAL m AS muenze_TYPE
 		m.posX = 512 - 8
 		m.posY = 384 - 8
 	ENDSELECT
-	
+
 		m.drawDirection = 0
 		m.rotation = RND(1)
 		m.phi = 225 + RND(90)
-	
+
 	DIMPUSH muenze[], m
 
 ENDFUNCTION
@@ -310,13 +314,15 @@ ENDFUNCTION
 FUNCTION drawMenu:
 
 	DRAWRECT 0, 512, 1023, 256, RGB(32, 32, 32)
+	
+	PRINT status.money, 0, 520
 
 ENDFUNCTION
 
 FUNCTION drawFoerderband:
 LOCAL tmp
 
-	
+
 
 	FOR tmp = 0 TO 31
 		SELECT status.foerderbandPosition
@@ -334,13 +340,13 @@ ENDFUNCTION
 FUNCTION drawDestroyer:
 
 	FOREACH d IN destroyer[]
-		
+
 		DRAWSPRITE sprite.hitter[d.hitterPosition].id$, d.posX, d.posY
-		
+
 		DRAWSPRITE sprite.holder.id$, d.posX, d.posY
-		
+
 		DRAWSPRITE sprite.vase[0].id$, d.posX, d.posY
-		
+
 		IF d.crackStatus > 0
 			SELECT d.crackStatus
 			CASE 1
@@ -353,7 +359,7 @@ FUNCTION drawDestroyer:
 				DRAWSPRITE sprite.crack[3].id$, d.posX, d.posY
 			ENDSELECT
 		ENDIF
-		
+
 	NEXT
 
 ENDFUNCTION
@@ -365,18 +371,18 @@ FUNCTION drawBackground:
 		POLYVECTOR 0, 512, 0, 0, RGB(0, 0, 32)
 		POLYVECTOR 1023, 512, 0, 0, RGB(0, 0, 32)
 		POLYVECTOR 1023, 0, 0, 0, RGB(64, 64, 128)
-	ENDPOLY 
+	ENDPOLY
 
 ENDFUNCTION
 
 FUNCTION drawMuenze:
 
-	IF LEN(muenze[]) > 0	
+	IF LEN(muenze[]) > 0
 		FOREACH m IN muenze[]
-			
+
 			DRAWSPRITE sprite.muenze[m.drawPosition].id$, m.posX, m.posY
-			
+
 		NEXT
 	ENDIF
-	
+
 ENDFUNCTION
