@@ -5,3 +5,378 @@
 
 
 // SETCURRENTDIR("Media") // go to media files
+
+TYPE foerderband_TYPE 
+	id$
+ENDTYPE
+
+TYPE sprite_TYPE
+	foerderband[] AS foerderband_TYPE
+	vase[] AS foerderband_TYPE
+	holder AS foerderband_TYPE
+	hitter[] AS foerderband_TYPE
+	crack[] AS foerderband_TYPE
+	muenze[] AS foerderband_TYPE
+ENDTYPE
+
+TYPE destroyer_TYPE
+	posX
+	posY
+	
+	vaseLevel
+	vaseLevelActive
+	vaseLife
+	vaseLifeMax
+	
+	hitterPosition
+	hitterTimeOld
+	hitterTimeOffset
+	hitterLevel
+	
+	crackStatus
+
+ENDTYPE
+
+TYPE status_TYPE
+	foerderbandPosition
+	foerderbandTimeOld
+	foerderbandTimeOffset
+	foerderbandSpeed
+ENDTYPE
+
+TYPE muenze_TYPE
+	posX
+	posY
+	
+	drawDirection
+	drawPosition
+	
+	phi
+	rotation
+
+	groundReached
+	
+	timerOld
+	timerOffset = 50
+	
+ENDTYPE
+
+GLOBAL sprite AS sprite_TYPE, status AS status_TYPE, destroyer[] AS destroyer_TYPE, muenze[] AS muenze_TYPE
+
+main()
+
+FUNCTION main:
+
+	init()
+	loader()
+	addDestroyer(0)
+
+
+	WHILE TRUE
+		drawBackground()
+		drawFoerderband()
+		drawMenu()
+		drawDestroyer()
+		drawMuenze()
+		
+		update()
+		
+		PRINT LEN(muenze[]), 0, 0
+	
+		SHOWSCREEN
+	WEND
+
+ENDFUNCTION
+
+FUNCTION init:
+
+
+	AUTOPAUSE FALSE
+	SYSTEMPOINTER TRUE
+	
+	status.foerderbandTimeOffset = 1000
+	status.foerderbandSpeed = 1
+	
+
+ENDFUNCTION
+
+FUNCTION loader:
+LOCAL f AS foerderband_TYPE, tmp, feld$[], vase$[], crack$[], hitter$[], muenze$[]
+
+	DIMDATA feld$[], "media/gfx/band_0.png", "media/gfx/band_1.png", "media/gfx/band_2.png"
+	DIMDATA vase$[], "media/gfx/pot_0.png"
+	DIMDATA crack$[], "media/gfx/crack_0.png", "media/gfx/crack_1.png", "media/gfx/crack_2.png", "media/gfx/crack_3.png"
+	DIMDATA hitter$[], "media/gfx/hitter_0.png", "media/gfx/hitter_1.png", "media/gfx/hitter_2.png", "media/gfx/hitter_3.png", "media/gfx/hitter_4.png"
+	DIMDATA muenze$[], "media/gfx/muenze_0.png", "media/gfx/muenze_1.png", "media/gfx/muenze_2.png", "media/gfx/muenze_3.png", "media/gfx/muenze_4.png"
+	
+	// Halterung
+		sprite.holder.id$ = spriteLoader("media/gfx/holder.png")
+
+	// Förderband
+	FOR tmp = 0 TO LEN(feld$[]) - 1
+		f.id$ = spriteLoader(feld$[tmp])
+		DIMPUSH sprite.foerderband[], f
+	NEXT
+	// Vase
+	FOR tmp = 0 TO LEN(vase$[]) - 1
+		f.id$ = spriteLoader(vase$[tmp])
+		DIMPUSH sprite.vase[], f	
+	NEXT
+	// Crack
+	FOR tmp = 0 TO LEN(crack$[]) - 1
+		f.id$ = spriteLoader(crack$[tmp])
+		DIMPUSH sprite.crack[], f	
+	NEXT
+	// Hitter
+	FOR tmp = 0 TO LEN(hitter$[]) - 1
+		f.id$ = spriteLoader(hitter$[tmp])
+		DIMPUSH sprite.hitter[], f
+	NEXT
+	// Münze
+	FOR tmp = 0 TO LEN(muenze$[]) - 1
+		f.id$ = spriteLoader(muenze$[tmp])
+		DIMPUSH sprite.muenze[], f
+	NEXT
+	// Destroyer
+	
+	
+ENDFUNCTION
+
+FUNCTION update:
+LOCAL vase, tmp, setter, foerderbandMovement, prozent
+	
+	IF GETTIMERALL() >= status.foerderbandTimeOld
+	
+		INC status.foerderbandPosition, 1
+		IF status.foerderbandPosition > 2 THEN status.foerderbandPosition = 0
+		
+		
+		foerderbandMovement = TRUE
+		
+		status.foerderbandTimeOld = GETTIMERALL() + status.foerderbandTimeOffset	
+		
+	ENDIF
+
+	FOREACH d IN destroyer[]
+		IF GETTIMERALL() >= d.hitterTimeOld
+			INC d.hitterPosition, 1
+			IF d.hitterPosition > 4 THEN d.hitterPosition = 0
+			
+			IF d.hitterPosition = 0
+				DEC d.vaseLife, 1
+				
+				prozent = d.vaseLife / d.vaseLifeMax
+				
+				IF prozent >= 0.8
+					d.crackStatus = 0
+				ELSEIF prozent < 0.8 AND prozent >= 0.6
+					d.crackStatus = 1
+				ELSEIF prozent < 0.6 AND prozent >= 0.4
+					d.crackStatus = 2
+				ELSEIF prozent < 0.4 AND prozent >= 0.2
+					d.crackStatus = 3
+				ELSE
+					d.crackStatus = 4
+				ENDIF
+				
+				
+				IF d.vaseLife = 0
+					vase = RND(d.vaseLevel)
+					d.crackStatus = 0
+
+					FOR tmp = 0 TO 2 + RND(2)
+						addMuenze(0)
+					NEXT
+					
+					SELECT vase
+					CASE 0
+												
+						d.vaseLife = 10
+						d.vaseLifeMax = d.vaseLife
+					
+					ENDSELECT
+					
+				ENDIF
+				
+			ENDIF
+			
+			d.hitterTimeOld = GETTIMERALL() + d.hitterTimeOffset
+		ENDIF
+	NEXT
+	
+	FOREACH m IN muenze[]
+		setter = 0
+		IF GETTIMERALL() >= m.timerOld
+		
+			IF m.drawDirection = 0
+				INC m.drawPosition, 1
+				IF m.drawPosition > 4
+					m.drawPosition = 4
+					m.drawDirection = 1
+				ENDIF
+			ENDIF
+			IF m.drawDirection = 1 AND setter = 0
+				DEC m.drawPosition, 1
+				IF m.drawPosition < 0
+					m.drawPosition = 0
+					m.drawDirection = 0
+				ENDIF
+			ENDIF		
+			m.timerOld = GETTIMERALL() + m.timerOffset
+
+			IF m.groundReached = FALSE
+				
+				IF m.rotation = 0
+					INC m.phi, 5
+					IF m.phi > 450 THEN m.phi = 450
+				ENDIF
+				IF m.rotation = 1
+					DEC m.phi, 5
+					IF m.phi < 90 THEN m.phi = 90
+				ENDIF
+				
+				m.posX = m.posX + COS(m.phi) * 5
+				m.posY = m.posY + SIN(m.phi) * 5
+			
+				IF m.posY >= 504 - 13 - 8
+					m.posY = 504 - 13 - 8
+					m.groundReached = TRUE
+				ENDIF
+			
+			ENDIF
+			
+			IF m.groundReached = TRUE
+				//IF foerderbandMovement = TRUE
+					INC m.posX, status.foerderbandSpeed
+					IF m.posX >= 1023 + 16
+						DELETE m
+					ENDIF
+				//ENDIF
+			ENDIF			
+			
+		ENDIF
+	NEXT
+
+ENDFUNCTION
+
+FUNCTION spriteLoader: file$
+LOCAL genID
+
+	genID = GENSPRITE()
+	
+	LOADSPRITE file$, genID
+	
+	RETURN genID
+	
+
+ENDFUNCTION
+
+FUNCTION addDestroyer: position
+LOCAL d AS destroyer_TYPE, defaultX = 496, defaultY = 368
+
+	//496
+	//368
+	
+	SELECT position
+	CASE 0
+		d.posX = 496
+		d.posY = 368
+		d.hitterTimeOffset = 50
+	ENDSELECT
+	
+		d.vaseLife = 10
+	
+	DIMPUSH destroyer[], d
+
+ENDFUNCTION
+
+FUNCTION addMuenze: position
+LOCAL m AS muenze_TYPE
+
+	SELECT position
+	CASE 0
+		m.posX = 512 - 8
+		m.posY = 384 - 8
+	ENDSELECT
+	
+		m.drawDirection = 0
+		m.rotation = RND(1)
+		m.phi = 225 + RND(90)
+	
+	DIMPUSH muenze[], m
+
+ENDFUNCTION
+
+FUNCTION drawMenu:
+
+	DRAWRECT 0, 512, 1023, 256, RGB(32, 32, 32)
+
+ENDFUNCTION
+
+FUNCTION drawFoerderband:
+LOCAL tmp
+
+	
+
+	FOR tmp = 0 TO 31
+		SELECT status.foerderbandPosition
+		CASE 0
+			DRAWSPRITE sprite.foerderband[0].id$, 0 + (tmp * 32), 480
+		CASE 1
+			DRAWSPRITE sprite.foerderband[1].id$, 0 + (tmp * 32), 480
+		CASE 2
+			DRAWSPRITE sprite.foerderband[2].id$, 0 + (tmp * 32), 480
+		ENDSELECT
+	NEXT
+
+ENDFUNCTION
+
+FUNCTION drawDestroyer:
+
+	FOREACH d IN destroyer[]
+		
+		DRAWSPRITE sprite.hitter[d.hitterPosition].id$, d.posX, d.posY
+		
+		DRAWSPRITE sprite.holder.id$, d.posX, d.posY
+		
+		DRAWSPRITE sprite.vase[0].id$, d.posX, d.posY
+		
+		IF d.crackStatus > 0
+			SELECT d.crackStatus
+			CASE 1
+				DRAWSPRITE sprite.crack[0].id$, d.posX, d.posY
+			CASE 2
+				DRAWSPRITE sprite.crack[1].id$, d.posX, d.posY
+			CASE 3
+				DRAWSPRITE sprite.crack[2].id$, d.posX, d.posY
+			CASE 4
+				DRAWSPRITE sprite.crack[3].id$, d.posX, d.posY
+			ENDSELECT
+		ENDIF
+		
+	NEXT
+
+ENDFUNCTION
+
+FUNCTION drawBackground:
+
+	STARTPOLY
+		POLYVECTOR 0, 0, 0, 0, RGB(64, 64, 128)
+		POLYVECTOR 0, 512, 0, 0, RGB(0, 0, 32)
+		POLYVECTOR 1023, 512, 0, 0, RGB(0, 0, 32)
+		POLYVECTOR 1023, 0, 0, 0, RGB(64, 64, 128)
+	ENDPOLY 
+
+ENDFUNCTION
+
+FUNCTION drawMuenze:
+
+	IF LEN(muenze[]) > 0	
+		FOREACH m IN muenze[]
+			
+			DRAWSPRITE sprite.muenze[m.drawPosition].id$, m.posX, m.posY
+			
+		NEXT
+	ENDIF
+	
+ENDFUNCTION
